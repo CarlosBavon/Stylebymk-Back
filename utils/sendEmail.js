@@ -2,11 +2,18 @@ const nodemailer = require("nodemailer");
 
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587, // Use 587 instead of 465
+    secure: false, // TLS (not SSL)
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false, // Sometimes needed on Render
+      ciphers: "SSLv3",
+    },
+    family: 4, // Force IPv4 (bypass IPv6 issues)
   });
 };
 
@@ -25,7 +32,6 @@ const sendEmail = async (to, subject, html) => {
     return false;
   }
 };
-
 
 const sendBookingConfirmation = async (booking) => {
   const cancelLink = `${process.env.FRONTEND_URL}/cancel?code=${booking.bookingCode}&email=${encodeURIComponent(booking.email)}`;
