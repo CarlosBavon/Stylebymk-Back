@@ -79,6 +79,7 @@ router.get("/slots/:date", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
+  console.log('Received booking request:', req.body);
   try {
     const booking = new Booking({
       ...req.body,
@@ -91,8 +92,9 @@ router.post("/", async (req, res) => {
       message: "Booking created!",
       bookingCode: booking.bookingCode,
     });
+    console.log('Booking saved successfully');
   } catch (error) {
-    console.error(error);
+    console.error('Booking error:', error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
