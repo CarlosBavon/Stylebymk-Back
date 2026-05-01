@@ -34,9 +34,9 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/bookings', bookingRoutes);
-app.use('/enquiries', enquiryRoutes);
-app.use('/contact', contactRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/enquiries', enquiryRoutes);
+app.use('/api/contact', contactRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
