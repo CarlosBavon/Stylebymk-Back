@@ -6,15 +6,12 @@ const allowedOrigins = [
   'http://localhost:3000', // Your local development server
   'https://stylebymk-front.vercel.app' // Your actual Vercel frontend URL
 ];
-const PORT = process.env.PORT || 5000;
 
 const bookingRoutes = require('./routes/bookings');
 const enquiryRoutes = require('./routes/enquiries');
 const contactRoutes = require('./routes/contact');
 
 const app = express();
-
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // Middleware
 app.use(cors({
