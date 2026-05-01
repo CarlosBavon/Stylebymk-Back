@@ -27,13 +27,6 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
-app.use(cors({
-  origin: 'https://stylebymk-front.vercel.app', // replace with actual
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
-app.options('*', cors()); // Preflight for all routes
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {
