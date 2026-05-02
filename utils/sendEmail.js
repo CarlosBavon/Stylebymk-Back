@@ -1,8 +1,5 @@
 const nodemailer = require("nodemailer");
 const axios = require("axios");
-const transporter = createTransporter();
-await transporter.verify();
-console.log("SMTP ready");
 
 const createTransporter = () => {
   return nodemailer.createTransport({
@@ -14,6 +11,16 @@ const createTransporter = () => {
       pass: process.env.EMAIL_PASS,
     },
   });
+};
+
+const testSMTPConnection = async () => {
+  try {
+    const transporter = createTransporter();
+    await transporter.verify();
+    console.log("✅ SMTP server is ready");
+  } catch (err) {
+    console.error("❌ SMTP connection failed:", err);
+  }
 };
 
 const sendEmail = async (to, subject, html) => {
