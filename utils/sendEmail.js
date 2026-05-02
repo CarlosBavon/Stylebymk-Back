@@ -1,8 +1,12 @@
 const nodemailer = require("nodemailer");
+const axios = require("axios");
+const transporter = createTransporter();
+await transporter.verify();
+console.log("SMTP ready");
 
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: 'smtp-relay.sendinblue.com',
+    host: "smtp-relay.sendinblue.com",
     port: 465,
     secure: true,
     auth: {
@@ -14,16 +18,24 @@ const createTransporter = () => {
 
 const sendEmail = async (to, subject, html) => {
   try {
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: `"MK Hairstylist" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    });
+    await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: { email: process.env.EMAIL_USER, name: "MK Hairstylist" },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      },
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+      },
+    );
     return true;
-  } catch (error) {
-    console.error("Email error:", error);
+  } catch (err) {
+    console.error(err.response?.data || err.message);
     return false;
   }
 };
