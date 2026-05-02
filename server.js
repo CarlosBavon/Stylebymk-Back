@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const allowedOrigins = [
   'http://localhost:3000', // Your local development server
-  'https://stylebymk-front.vercel.app' // Your actual Vercel frontend URL
+  'https://stylebymk.vercel.app' // Your actual Vercel frontend URL
 ];
 
 const bookingRoutes = require('./routes/bookings');
