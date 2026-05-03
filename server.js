@@ -10,12 +10,10 @@ const allowedOrigins = [
 const bookingRoutes = require('./routes/bookings');
 const enquiryRoutes = require('./routes/enquiries');
 const contactRoutes = require('./routes/contact');
-const mpesaRoutes = require('./routes/mpesa');
 
 const app = express();
 
 // Middleware
-app.use('/api/mpesa', mpesaRoutes);
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl)

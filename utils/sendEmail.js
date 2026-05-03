@@ -74,17 +74,6 @@ const sendBookingConfirmation = async (booking) => {
     </div>
   `;
 
-  const html = `
-    <div style="font-family: Poppins, sans-serif; border:2px solid #D4AF37; padding:20px;">
-      <h1 style="color:#D4AF37;">Booking Confirmed (Deposit Paid)</h1>
-      <p>Dear ${booking.name},</p>
-      <p>Your ${booking.service} booking on ${booking.date} at ${booking.time} is confirmed.</p>
-      <p>Total: Ksh ${booking.totalPrice} | Deposit paid: Ksh ${booking.depositPaid} | Balance: Ksh ${booking.balance}</p>
-      <p>Booking Code: ${booking.bookingCode}</p>
-      <p>To cancel, use your booking code. Refund policy: 2% deduction from deposit if cancelled.</p>
-    </div>
-  `;
-
   await sendEmail(
     booking.email,
     "Booking Confirmation - MK Hairstylist",
