@@ -49,14 +49,20 @@ const sendEmail = async (to, subject, html) => {
 
 const sendBookingConfirmation = async (booking) => {
   const cancelLink = `${process.env.FRONTEND_URL}/cancel?code=${booking.bookingCode}&email=${encodeURIComponent(booking.email)}`;
+
+  // Include deposit information in the email
   const customerHtml = `
     <div style="font-family: 'Poppins', sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #D4AF37; padding: 20px; border-radius: 10px;">
       <h1 style="color: #D4AF37;">Booking Confirmation</h1>
       <p>Dear ${booking.name},</p>
       <p>Your booking has been confirmed for ${new Date(booking.date).toLocaleDateString()} at ${booking.time}.</p>
       <p><strong>Service:</strong> ${booking.service}</p>
+      <p><strong>Total Price:</strong> KES ${booking.totalAmount}</p>
+      <p><strong>Deposit Paid (10%):</strong> KES ${booking.depositAmount}</p>
+      <p><strong>Remaining to pay at salon:</strong> KES ${booking.remainingAmount}</p>
       <p>Booking Code: <strong>${booking.bookingCode}</strong></p>
       <p>To cancel your appointment, click <a href="${cancelLink}">here</a> or use code ${booking.bookingCode} on our cancellation page.</p>
+      <p style="color: #ff4444;"><strong>Cancellation Policy:</strong> A 2% penalty of total price applies to cancellations (deducted from deposit).</p>
       <hr style="border-color: #D4AF37;">
       <p style="color: #888;">MK Hairstylist - Where Style Meets Elegance</p>
     </div>
@@ -71,6 +77,9 @@ const sendBookingConfirmation = async (booking) => {
       <p><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</p>
       <p><strong>Time:</strong> ${booking.time}</p>
       <p><strong>Service:</strong> ${booking.service}</p>
+      <p><strong>Total:</strong> KES ${booking.totalAmount}</p>
+      <p><strong>Deposit Paid:</strong> KES ${booking.depositAmount}</p>
+      <p><strong>M-Pesa Receipt:</strong> ${booking.mpesaReceiptNumber || "N/A"}</p>
     </div>
   `;
 
@@ -115,8 +124,55 @@ const sendContactNotification = async (contact) => {
   );
 };
 
+// NEW: Send cancellation email with penalty details
+const sendCancellationEmail = async (booking, penaltyAmount, refundAmount) => {
+  const customerHtml = `
+    <div style="font-family: 'Poppins', sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #D4AF37; padding: 20px; border-radius: 10px;">
+      <h1 style="color: #D4AF37;">Booking Cancellation Confirmation</h1>
+      <p>Dear ${booking.name},</p>
+      <p>Your booking for ${booking.service} on ${new Date(booking.date).toLocaleDateString()} at ${booking.time} has been cancelled.</p>
+      
+      <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #D4AF37; margin-top: 0;">Refund Summary</h3>
+        <p><strong>Deposit Paid:</strong> KES ${booking.depositAmount}</p>
+        <p><strong>Penalty (2% of total price):</strong> -KES ${penaltyAmount.toFixed(2)}</p>
+        <p><strong>Refund Amount:</strong> KES ${refundAmount.toFixed(2)}</p>
+      </div>
+      
+      <p>The refund will be processed to your M-Pesa number within 3-5 business days.</p>
+      <hr style="border-color: #D4AF37;">
+      <p style="color: #888;">MK Hairstylist - Where Style Meets Elegance</p>
+    </div>
+  `;
+
+  const adminHtml = `
+    <div style="font-family: 'Poppins', sans-serif;">
+      <h2 style="color: #D4AF37;">Booking Cancelled</h2>
+      <p><strong>Name:</strong> ${booking.name}</p>
+      <p><strong>Email:</strong> ${booking.email}</p>
+      <p><strong>Phone:</strong> ${booking.phone}</p>
+      <p><strong>Service:</strong> ${booking.service}</p>
+      <p><strong>Deposit Paid:</strong> KES ${booking.depositAmount}</p>
+      <p><strong>Penalty (2%):</strong> KES ${penaltyAmount.toFixed(2)}</p>
+      <p><strong>To Refund:</strong> KES ${refundAmount.toFixed(2)}</p>
+    </div>
+  `;
+
+  await sendEmail(
+    booking.email,
+    "Booking Cancelled - MK Hairstylist",
+    customerHtml,
+  );
+  await sendEmail(
+    process.env.ADMIN_EMAIL,
+    "Booking Cancelled Alert",
+    adminHtml,
+  );
+};
+
 module.exports = {
   sendBookingConfirmation,
   sendEnquiryNotification,
   sendContactNotification,
+  sendCancellationEmail, // Export new function
 };
