@@ -76,57 +76,79 @@ router.post("/stkpush", async (req, res) => {
 router.get("/status/:checkoutRequestId", async (req, res) => {
   try {
     const { checkoutRequestId } = req.params;
-
-    // Check if we have pending transaction
     const pendingTx = pendingTransactions.get(checkoutRequestId);
+
+    // If we have no record, assume still pending (not failed)
     if (!pendingTx) {
-      return res.status(404).json({
+      return res.json({
         success: false,
-        message: "Transaction not found",
+        resultCode: 1,
+        resultDesc: "Transaction initializing, please wait...",
       });
     }
 
+    // Query Safaricom for status
     const response = await mpesaService.queryStatus(checkoutRequestId);
+    console.log("Query status response:", JSON.stringify(response, null, 2));
 
+    // Handle known result codes
     if (response.ResultCode === "0") {
-      // Payment successful
+      // Success
       pendingTx.status = "completed";
       pendingTx.mpesaReceiptNumber =
         response.ResultDesc.match(/[A-Z0-9]{10,}/)?.[0] || "N/A";
       pendingTransactions.set(checkoutRequestId, pendingTx);
 
-      res.json({
+      return res.json({
         success: true,
         resultCode: 0,
         resultDesc: response.ResultDesc,
         mpesaReceiptNumber: pendingTx.mpesaReceiptNumber,
         transactionId: checkoutRequestId,
       });
-    } else if (response.ResultCode) {
-      pendingTx.status = "failed";
-      pendingTransactions.set(checkoutRequestId, pendingTx);
-      res.json({
-        success: false,
-        resultCode: response.ResultCode,
-        resultDesc: response.ResultDesc,
-      });
-    } else {
-      // Still pending
-      res.json({
+    } else if (response.ResultCode === "1037") {
+      // Timeout - still pending? Or user didn't act. Keep as pending for now.
+      return res.json({
         success: false,
         resultCode: 1,
-        resultDesc: "Payment pending",
+        resultDesc: "Waiting for user to complete payment...",
+      });
+    } else if (response.ResultCode === "1032") {
+      // User cancelled - permanent failure
+      pendingTx.status = "failed";
+      pendingTransactions.set(checkoutRequestId, pendingTx);
+      return res.json({
+        success: false,
+        resultCode: 1032,
+        resultDesc: "Payment cancelled by user",
+      });
+    } else if (response.ResultCode && response.ResultCode !== "1") {
+      // Any other error code - treat as failure
+      pendingTx.status = "failed";
+      pendingTransactions.set(checkoutRequestId, pendingTx);
+      return res.json({
+        success: false,
+        resultCode: response.ResultCode,
+        resultDesc: response.ResultDesc || "Payment failed",
+      });
+    } else {
+      // No result code yet - still pending
+      return res.json({
+        success: false,
+        resultCode: 1,
+        resultDesc: "Processing payment...",
       });
     }
   } catch (error) {
     console.error("Status query error:", error);
-    res.status(500).json({
+    // On error, assume pending, don't fail immediately
+    return res.json({
       success: false,
-      message: "Internal server error",
+      resultCode: 1,
+      resultDesc: "Payment status check in progress",
     });
   }
 });
-
 // M-Pesa Callback URL (to be configured in Daraja)
 router.post("/callback", async (req, res) => {
   console.log("M-Pesa Callback received:", JSON.stringify(req.body, null, 2));
