@@ -8,11 +8,30 @@ function generateBookingCode() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
 }
 
+// Helper: Convert "YYYY-MM-DD" to UTC Date object (midnight)
+function getUTCDateFromString(dateStr) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+}
+
 router.get("/slots/:date", async (req, res) => {
   try {
-    const date = new Date(req.params.date);
-    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+    const dateStr = req.params.date;
+    // Validate format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid date format. Use YYYY-MM-DD.",
+        });
+    }
+
+    const targetDate = getUTCDateFromString(dateStr);
+    const startOfDay = new Date(targetDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
 
     // Get all bookings for the day
     const bookings = await Booking.find(
@@ -32,21 +51,20 @@ router.get("/slots/:date", async (req, res) => {
     const possibleStarts = [];
     for (let hour = 8; hour <= 15; hour++) {
       for (let minute of [0, 30]) {
-        // Skip 16:00 (hour=16) – not needed, loop stops at 15
         if (hour === 15 && minute === 30) {
-          possibleStarts.push(hour * 60 + minute); // 15:30
+          possibleStarts.push(hour * 60 + minute);
         } else if (hour < 15) {
           possibleStarts.push(hour * 60 + minute);
         }
       }
     }
-    // Add 15:30 explicitly if loop condition skipped it
-    possibleStarts.push(15 * 60 + 30);
-    
-    // Remove duplicates and sort
+    // Ensure 15:30 is included only once
+    if (!possibleStarts.includes(15 * 60 + 30)) {
+      possibleStarts.push(15 * 60 + 30);
+    }
     const allStartTimes = [...new Set(possibleStarts)].sort((a, b) => a - b);
 
-    // A new booking of duration 90 min blocks slots that start during [start, start+90)
+    // Block slots that overlap with existing bookings (duration 90 min)
     const blockedStarts = new Set();
     for (let booked of bookedStarts) {
       const blockStart = booked;
@@ -79,10 +97,71 @@ router.get("/slots/:date", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  console.log('Received booking request:', req.body);
+  console.log("Received booking request:", req.body);
   try {
+    const { name, email, phone, date: dateStr, time, service } = req.body;
+
+    // Validation
+    if (!name || !email || !phone || !dateStr || !time || !service) {
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required." });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid date format. Use YYYY-MM-DD.",
+        });
+    }
+
+    const bookingDate = getUTCDateFromString(dateStr);
+    const todayUTC = new Date();
+    todayUTC.setUTCHours(0, 0, 0, 0);
+
+    // Reject past dates
+    if (bookingDate < todayUTC) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot book for a past date.",
+      });
+    }
+    // Reject today (same-day bookings not allowed)
+    if (bookingDate.getTime() === todayUTC.getTime()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Same-day bookings are not allowed. Please choose tomorrow or later.",
+      });
+    }
+
+    // Optional: check if the selected time is still available (double‑check)
+    const startOfDay = new Date(bookingDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(bookingDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const existingBooking = await Booking.findOne({
+      date: { $gte: startOfDay, $lte: endOfDay },
+      time: time,
+    });
+    if (existingBooking) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This time slot is no longer available. Please choose another time.",
+      });
+    }
+
+    // Create booking
     const booking = new Booking({
-      ...req.body,
+      name,
+      email,
+      phone,
+      date: bookingDate,
+      time,
+      service,
       bookingCode: generateBookingCode(),
     });
     await booking.save();
@@ -92,9 +171,9 @@ router.post("/", async (req, res) => {
       message: "Booking created!",
       bookingCode: booking.bookingCode,
     });
-    console.log('Booking saved successfully');
+    console.log("Booking saved successfully");
   } catch (error) {
-    console.error('Booking error:', error);
+    console.error("Booking error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -104,12 +183,10 @@ router.post("/cancel", async (req, res) => {
     const { bookingCode, email } = req.body;
     const booking = await Booking.findOne({ bookingCode, email });
     if (!booking) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Booking not found. Check code and email.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found. Check code and email.",
+      });
     }
     await Booking.deleteOne({ _id: booking._id });
     res.json({ success: true, message: "Booking cancelled successfully." });
