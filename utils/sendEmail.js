@@ -28,7 +28,7 @@ const sendEmail = async (to, subject, html) => {
     await axios.post(
       "https://api.brevo.com/v3/smtp/email",
       {
-        sender: { email: process.env.EMAIL_USER, name: "MK Hairstylist" },
+        sender: { email: process.env.EMAIL_USER, name: "StylesbyMK" },
         to: [{ email: to }],
         subject,
         htmlContent: html,
@@ -58,7 +58,7 @@ const sendBookingConfirmation = async (booking) => {
       <p>Booking Code: <strong>${booking.bookingCode}</strong></p>
       <p>To cancel your appointment, click <a href="${cancelLink}">here</a> or use code ${booking.bookingCode} on our cancellation page.</p>
       <hr style="border-color: #D4AF37;">
-      <p style="color: #888;">MK Hairstylist - Where Style Meets Elegance</p>
+      <p style="color: #888;">StylesbyMK - Where Style Meets Elegance</p>
     </div>
   `;
 
@@ -76,7 +76,7 @@ const sendBookingConfirmation = async (booking) => {
 
   await sendEmail(
     booking.email,
-    "Booking Confirmation - MK Hairstylist",
+    "Booking Confirmation - StylesbyMK",
     customerHtml,
   );
   await sendEmail(process.env.ADMIN_EMAIL, "New Booking Alert", adminHtml);
@@ -93,7 +93,7 @@ const sendEnquiryNotification = async (enquiry) => {
   `;
   await sendEmail(
     process.env.ADMIN_EMAIL,
-    "New Enquiry - MK Hairstylist",
+    "New Enquiry - StylesbyMK",
     adminHtml,
   );
 };
@@ -110,7 +110,7 @@ const sendContactNotification = async (contact) => {
   `;
   await sendEmail(
     process.env.ADMIN_EMAIL,
-    "New Contact Message - MK Hairstylist",
+    "New Contact Message - StylesbyMK",
     adminHtml,
   );
 };
