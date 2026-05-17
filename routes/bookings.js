@@ -159,7 +159,7 @@ router.post("/", async (req, res) => {
       name,
       email,
       phone,
-      date: bookingDate,
+      date: dateStr,
       time,
       service,
       bookingCode: generateBookingCode(),
