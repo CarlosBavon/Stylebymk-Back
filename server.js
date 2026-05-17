@@ -14,17 +14,15 @@ const contactRoutes = require("./routes/contact");
 
 const app = express();
 
-// Middleware
+// CORS middleware – this automatically handles OPTIONS preflight
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (e.g., curl, mobile apps)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      const msg = "CORS policy does not allow access from this origin.";
-      return callback(new Error(msg), false);
+      return callback(new Error("CORS not allowed"), false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -32,17 +30,14 @@ app.use(
   }),
 );
 
-// Handle preflight requests explicitly
-app.options("*", cors());
-
 app.use(express.json());
 
-// Health check endpoint (for Render / uptime monitoring)
+// Health check
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// MongoDB Connection
+// MongoDB
 mongoose
   .connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 5000,
@@ -52,12 +47,12 @@ mongoose
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // API Routes
-app.use("/api/bookings", bookingRoutes); // includes all booking + M-Pesa endpoints
+app.use("/api/bookings", bookingRoutes);
 app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/contact", contactRoutes);
 
-// Fallback for undefined routes
-app.use("*", (req, res) => {
+// Catch‑all for undefined routes – NO asterisk needed
+app.use((req, res) => {
   res.status(404).json({ success: false, message: "Endpoint not found" });
 });
 
