@@ -14,15 +14,16 @@ const contactRoutes = require("./routes/contact");
 
 const app = express();
 
-// CORS middleware – this automatically handles OPTIONS preflight
+// CORS middleware (handles preflight automatically)
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.indexOf(origin) !== -1) {
         return callback(null, true);
       }
-      return callback(new Error("CORS not allowed"), false);
+      const msg = "CORS policy does not allow access from this origin.";
+      return callback(new Error(msg), false);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -32,12 +33,12 @@ app.use(
 
 app.use(express.json());
 
-// Health check
+// Health check endpoint (useful for Render / uptime monitoring)
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// MongoDB
+// MongoDB Connection
 mongoose
   .connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 5000,
@@ -46,12 +47,12 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// API Routes
+// API Routes (bookings includes calendar functionality)
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/contact", contactRoutes);
 
-// Catch‑all for undefined routes – NO asterisk needed
+// Catch‑all for undefined endpoints (must be after all valid routes)
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Endpoint not found" });
 });

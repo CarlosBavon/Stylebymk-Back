@@ -10,16 +10,16 @@ const auth = new google.auth.JWT(
 const calendar = google.calendar({ version: "v3", auth });
 
 const createCalendarEvent = async (booking, isAdmin = false) => {
-  const startDateTime = new Date(`${booking.date}T${booking.time}:00`);
-  const endDateTime = new Date(startDateTime.getTime() + 90 * 60000); // 1.5h duration
+  const startDateTime = new Date(`${booking.date}T${booking.time}:00+03:00`); // EAT
+  const endDateTime = new Date(startDateTime.getTime() + 90 * 60000);
 
   const event = {
     summary: isAdmin
       ? `Booking: ${booking.name} - ${booking.service}`
       : `Your hairstyle appointment - ${booking.service}`,
     description: isAdmin
-      ? `Client: ${booking.name}\nPhone: ${booking.phone}\nEmail: ${booking.email}\nDeposit paid: KSh ${booking.depositAmount}\nBalance: KSh ${booking.balance}`
-      : `Thank you for your 15% deposit (KSh ${booking.depositAmount}). Balance of KSh ${booking.balance} to be paid at the salon.\nBooking code: ${booking.bookingCode}\nTo cancel, use the cancellation page.`,
+      ? `Client: ${booking.name}\nPhone: ${booking.phone}\nEmail: ${booking.email}\nBooking code: ${booking.bookingCode}`
+      : `Thank you for booking with StylesbyMK.\nBooking code: ${booking.bookingCode}\nTo cancel, use the cancellation page.`,
     start: {
       dateTime: startDateTime.toISOString(),
       timeZone: "Africa/Nairobi",
@@ -33,7 +33,7 @@ const createCalendarEvent = async (booking, isAdmin = false) => {
   const response = await calendar.events.insert({
     calendarId,
     resource: event,
-    sendUpdates: "all", // sends email to attendees
+    sendUpdates: "all",
   });
   return response.data.id;
 };
