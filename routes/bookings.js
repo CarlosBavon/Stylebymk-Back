@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const Booking = require("../models/Booking");
 const { sendBookingConfirmation } = require("../utils/sendEmail");
-const { createCalendarEvent } = require("../utils/calendar"); // ✅ new import
 const crypto = require("crypto");
 
 function generateBookingCode() {
@@ -20,10 +19,12 @@ router.get("/slots/:date", async (req, res) => {
     const dateStr = req.params.date;
     // Validate format
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date format. Use YYYY-MM-DD.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Invalid date format. Use YYYY-MM-DD.",
+        });
     }
 
     const targetDate = getUTCDateFromString(dateStr);
@@ -32,7 +33,7 @@ router.get("/slots/:date", async (req, res) => {
     const endOfDay = new Date(targetDate);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    // Get all bookings for the day (all are confirmed – no payment status)
+    // Get all bookings for the day
     const bookings = await Booking.find(
       {
         date: { $gte: startOfDay, $lte: endOfDay },
@@ -121,22 +122,21 @@ router.post("/", async (req, res) => {
 
     // Reject past dates
     if (bookingDate < todayUTC) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Cannot book for a past date." });
+      return res.status(400).json({
+        success: false,
+        message: "Cannot book for a past date.",
+      });
     }
     // Reject today (same-day bookings not allowed)
     if (bookingDate.getTime() === todayUTC.getTime()) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Same-day bookings are not allowed. Please choose tomorrow or later.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Same-day bookings are not allowed. Please choose tomorrow or later.",
+      });
     }
 
-    // Check if the selected time is still available
+    // Optional: check if the selected time is still available (double‑check)
     const startOfDay = new Date(bookingDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
     const endOfDay = new Date(bookingDate);
@@ -159,35 +159,16 @@ router.post("/", async (req, res) => {
       name,
       email,
       phone,
-      date: dateStr,
+      date: bookingDate,
       time,
       service,
       bookingCode: generateBookingCode(),
     });
     await booking.save();
-
-    // ✅ CREATE GOOGLE CALENDAR EVENTS (client + admin)
-    try {
-      // Client calendar event (sends invite to client's email)
-      const clientEventId = await createCalendarEvent(booking, false);
-      // Admin calendar event (adds to admin's calendar)
-      const adminEventId = await createCalendarEvent(booking, true);
-      // Optionally store the client event ID (if your model has a field for it)
-      booking.googleEventId = clientEventId;
-      await booking.save();
-      console.log(`Calendar events created for booking ${booking.bookingCode}`);
-    } catch (calError) {
-      // Non‑blocking: log error but do not fail the booking
-      console.error("Failed to create calendar events:", calError);
-    }
-
-    // Send confirmation email (email template includes calendar info)
     await sendBookingConfirmation(booking);
-
     res.status(201).json({
       success: true,
-      message:
-        "Booking created! A calendar invitation has been sent to your email.",
+      message: "Booking created!",
       bookingCode: booking.bookingCode,
     });
     console.log("Booking saved successfully");

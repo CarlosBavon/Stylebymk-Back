@@ -51,12 +51,12 @@ const sendBookingConfirmation = async (booking) => {
   const cancelLink = `${process.env.FRONTEND_URL}/cancel?code=${booking.bookingCode}&email=${encodeURIComponent(booking.email)}`;
   const customerHtml = `
     <div style="font-family: 'Poppins', sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #D4AF37; padding: 20px; border-radius: 10px;">
-      <h1 style="color: #D4AF37;">Booking Confirmed ✅</h1>
+      <h1 style="color: #D4AF37;">Booking Confirmation</h1>
       <p>Dear ${booking.name},</p>
-      <p>Your <strong>${booking.service}</strong> appointment has been confirmed for <strong>${new Date(booking.date).toLocaleDateString()}</strong> at <strong>${booking.time}</strong>.</p>
-      <p><strong>Booking Code:</strong> ${booking.bookingCode}</p>
-      <p>📅 A Google Calendar invitation has been sent to your email address. Please check your inbox (and spam folder) and click "Yes" to add it to your calendar.</p>
-      <p>❌ To cancel your appointment, click <a href="${cancelLink}">here</a>.</p>
+      <p>Your booking has been confirmed for ${new Date(booking.date).toLocaleDateString()} at ${booking.time}.</p>
+      <p><strong>Service:</strong> ${booking.service}</p>
+      <p>Booking Code: <strong>${booking.bookingCode}</strong></p>
+      <p>To cancel your appointment, click <a href="${cancelLink}">here</a> or use code ${booking.bookingCode} on our cancellation page.</p>
       <hr style="border-color: #D4AF37;">
       <p style="color: #888;">StylesbyMK - Where Style Meets Elegance</p>
     </div>
@@ -71,8 +71,6 @@ const sendBookingConfirmation = async (booking) => {
       <p><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</p>
       <p><strong>Time:</strong> ${booking.time}</p>
       <p><strong>Service:</strong> ${booking.service}</p>
-      <p><strong>Booking Code:</strong> ${booking.bookingCode}</p>
-      <p>📅 A Google Calendar event has been added to your calendar automatically (service account).</p>
     </div>
   `;
 
