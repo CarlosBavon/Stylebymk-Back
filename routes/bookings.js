@@ -3,6 +3,7 @@ const router = express.Router();
 const Booking = require("../models/Booking");
 const { sendBookingConfirmation } = require("../utils/sendEmail");
 const crypto = require("crypto");
+const { createCalendarEvent } = require("../utils/calendar");
 
 function generateBookingCode() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -165,6 +166,18 @@ router.post("/", async (req, res) => {
       bookingCode: generateBookingCode(),
     });
     await booking.save();
+    // Create Google Calendar events
+    let clientEventId = null, adminEventId = null;
+    try {
+      clientEventId = await createCalendarEvent(booking, false); // client invitation
+      adminEventId = await createCalendarEvent(booking, true);   // admin calendar
+      booking.clientEventId = clientEventId;
+      booking.adminEventId = adminEventId;
+      await booking.save();
+      console.log(`✅ Calendar events created for booking ${booking.bookingCode}`);
+    } catch (calError) {
+      console.error("⚠️ Calendar event creation failed (non‑blocking):", calError.message);
+    }
     await sendBookingConfirmation(booking);
     res.status(201).json({
       success: true,
@@ -188,6 +201,17 @@ router.post("/cancel", async (req, res) => {
         message: "Booking not found. Check code and email.",
       });
     }
+
+    // Delete calendar events if they exist
+    const { deleteCalendarEvent } = require("../utils/calendar");
+    try {
+      if (booking.clientEventId) await deleteCalendarEvent(booking.clientEventId);
+      if (booking.adminEventId) await deleteCalendarEvent(booking.adminEventId);
+      console.log(`🗑️ Calendar events deleted for booking ${booking.bookingCode}`);
+    } catch (calError) {
+      console.error("⚠️ Could not delete calendar events:", calError.message);
+    }
+
     await Booking.deleteOne({ _id: booking._id });
     res.json({ success: true, message: "Booking cancelled successfully." });
   } catch (error) {
