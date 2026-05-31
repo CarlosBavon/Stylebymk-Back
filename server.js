@@ -2,11 +2,11 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const helmet = require('helmet');
 const {
   generalLimiter,
   bookingLimiter,
   enquiryLimiter,
-  // cancelLimiter is optional – we can apply it to the cancel route if desired
 } = require('./middleware/rateLimiter');
 
 const allowedOrigins = [
@@ -41,6 +41,7 @@ app.use(
 );
 
 app.use(express.json());
+app.use(helmet());
 
 // Health check endpoint (unlimited, no rate limiting)
 app.get("/health", (req, res) => {
