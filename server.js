@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require('helmet');
+const morgan = require('morgan');
 const {
   generalLimiter,
   bookingLimiter,
@@ -42,6 +43,7 @@ app.use(
 
 app.use(express.json());
 app.use(helmet());
+app.use(morgan('combined'));
 
 // Health check endpoint (unlimited, no rate limiting)
 app.get("/health", (req, res) => {

@@ -23,6 +23,7 @@
     "helmet": "^8.2.0",
     "mongodb": "^7.2.0",
     "mongoose": "^9.6.2",
+    "morgan": "^1.10.1",
     "nodemailer": "^8.0.7"
   },
   "devDependencies": {
