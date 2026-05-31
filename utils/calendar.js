@@ -1,10 +1,10 @@
 const { google } = require('googleapis');
 
-// OAuth2 client setup using refresh token
+// OAuth2 client setup 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    'https://developers.google.com/oauthplayground' // must match the redirect URI used to get refresh token
+    'https://developers.google.com/oauthplayground' 
 );
 
 oauth2Client.setCredentials({
@@ -20,13 +20,13 @@ const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
  * @returns {Promise<string>} - The Google Calendar event ID.
  */
 const createCalendarEvent = async (booking, isAdmin = false) => {
-    // booking.date is a Date object; convert to YYYY-MM-DD string in local time
+    // booking.date
     const year = booking.date.getFullYear();
     const month = String(booking.date.getMonth() + 1).padStart(2, '0');
     const day = String(booking.date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
 
-    // Combine date and time (e.g., "14:30") in East Africa Time (EAT = UTC+3)
+    // Combine date and time
     const startDateTime = new Date(`${dateStr}T${booking.time}:00+03:00`);
     if (isNaN(startDateTime.getTime())) {
         throw new Error(`Invalid date/time: ${dateStr} ${booking.time}`);
@@ -51,10 +51,7 @@ const createCalendarEvent = async (booking, isAdmin = false) => {
         attendees: isAdmin ? [] : [{ email: booking.email }], // client gets invite email
         reminders: { useDefault: true },
     };
-
-    // For the admin, we put the event on 'primary' calendar (the owner of the refresh token)
-    // For the client, we also use 'primary' – the event is created on the admin's calendar
-    // but the attendee receives an invitation; it does not create an event on their own calendar automatically.
+ 
     const calendarId = 'primary';
     const response = await calendar.events.insert({
         calendarId,

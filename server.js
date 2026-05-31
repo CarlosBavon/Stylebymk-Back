@@ -11,6 +11,7 @@ const allowedOrigins = [
 const bookingRoutes = require("./routes/bookings");
 const enquiryRoutes = require("./routes/enquiries");
 const contactRoutes = require("./routes/contact");
+const testimonialRoutes = require("./routes/testimonials");
 
 const app = express();
 
@@ -51,6 +52,7 @@ mongoose
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/testimonials", testimonialRoutes);
 
 // Catch‑all for undefined endpoints (must be after all valid routes)
 app.use((req, res) => {
