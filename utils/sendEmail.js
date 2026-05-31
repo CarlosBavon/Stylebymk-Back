@@ -47,16 +47,25 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
+// Helper: format YYYY-MM-DD to a readable date (e.g., "31 May 2026")
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.toLocaleDateString("en-KE", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+};
+
 const sendBookingConfirmation = async (booking) => {
   const cancelLink = `${process.env.FRONTEND_URL}/cancel?code=${booking.bookingCode}&email=${encodeURIComponent(booking.email)}`;
+  const formattedDate = formatDate(booking.date);
   const customerHtml = `
     <div style="font-family: 'Poppins', sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #D4AF37; padding: 20px; border-radius: 10px;">
-      <h1 style="color: #D4AF37;">Booking Confirmation</h1>
+      <h1 style="color: #D4AF37;">Booking Confirmed ✅</h1>
       <p>Dear ${booking.name},</p>
-      <p>Your booking has been confirmed for ${new Date(booking.date).toLocaleDateString()} at ${booking.time}.</p>
-      <p><strong>Service:</strong> ${booking.service}</p>
-      <p>Booking Code: <strong>${booking.bookingCode}</strong></p>
-      <p>To cancel your appointment, click <a href="${cancelLink}">here</a> or use code ${booking.bookingCode} on our cancellation page.</p>
+      <p>Your <strong>${booking.service}</strong> appointment has been confirmed for <strong>${formattedDate}</strong> at <strong>${booking.time}</strong>.</p>
+      <p><strong>Booking Code:</strong> ${booking.bookingCode}</p>
+      <p>📅 A Google Calendar invitation has been sent to your email address. Please check your inbox (and spam folder) and click "Yes" to add it to your calendar.</p>
+      <p>❌ To cancel your appointment, click <a href="${cancelLink}">here</a>.</p>
       <hr style="border-color: #D4AF37;">
       <p style="color: #888;">StylesbyMK - Where Style Meets Elegance</p>
     </div>
@@ -68,9 +77,11 @@ const sendBookingConfirmation = async (booking) => {
       <p><strong>Name:</strong> ${booking.name}</p>
       <p><strong>Email:</strong> ${booking.email}</p>
       <p><strong>Phone:</strong> ${booking.phone}</p>
-      <p><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</p>
+      <p><strong>Date:</strong> ${formattedDate}</p>
       <p><strong>Time:</strong> ${booking.time}</p>
       <p><strong>Service:</strong> ${booking.service}</p>
+      <p><strong>Booking Code:</strong> ${booking.bookingCode}</p>
+      <p>📅 A Google Calendar event has been added to your calendar automatically.</p>
     </div>
   `;
 

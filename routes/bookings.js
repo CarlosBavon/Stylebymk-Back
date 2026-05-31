@@ -10,13 +10,13 @@ function generateBookingCode() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
 }
 
-// Helper: Convert "YYYY-MM-DD" to UTC Date object (midnight)
-function getUTCDateFromString(dateStr) {
+// Helper: Convert "YYYY-MM-DD" to a local date string for validation (no timezone)
+function getLocalDateFromString(dateStr) {
   const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  return new Date(year, month - 1, day); // local timezone
 }
 
-// List of allowed services (must match frontend and servicePrices)
+// List of allowed services (same as frontend)
 const allowedServices = [
   "Almond Twists",
   "Basket Weave Braids",
@@ -67,7 +67,7 @@ const allowedServices = [
   "Zigzag Cornrows"
 ];
 
-// GET /slots/:date (no validation needed except date format – already checked)
+// GET /slots/:date – use string date to fetch bookings (no timezone conversion)
 router.get("/slots/:date", async (req, res) => {
   try {
     const dateStr = req.params.date;
@@ -77,19 +77,17 @@ router.get("/slots/:date", async (req, res) => {
         message: "Invalid date format. Use YYYY-MM-DD.",
       });
     }
-    const targetDate = getUTCDateFromString(dateStr);
-    const startOfDay = new Date(targetDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
-    const bookings = await Booking.find(
-      { date: { $gte: startOfDay, $lte: endOfDay } },
-      "time"
-    );
+
+    // Find all bookings for the exact date string
+    const bookings = await Booking.find({ date: dateStr }, "time");
+
+    // Convert booked start times to minutes from midnight
     const bookedStarts = bookings.map((b) => {
       const [hours, minutes] = b.time.split(":").map(Number);
       return hours * 60 + minutes;
     });
+
+    // Generate all possible start times (every 30 min from 8:00 to 15:30)
     const possibleStarts = [];
     for (let hour = 8; hour <= 15; hour++) {
       for (let minute of [0, 30]) {
@@ -104,16 +102,20 @@ router.get("/slots/:date", async (req, res) => {
       possibleStarts.push(15 * 60 + 30);
     }
     const allStartTimes = [...new Set(possibleStarts)].sort((a, b) => a - b);
+
+    // Block slots that overlap with existing bookings (duration 90 min)
     const blockedStarts = new Set();
     for (let booked of bookedStarts) {
       const blockStart = booked;
-      const blockEnd = booked + 90;
+      const blockEnd = booked + 90; // exclusive
       for (let t of allStartTimes) {
         if (t >= blockStart && t < blockEnd) {
           blockedStarts.add(t);
         }
       }
     }
+
+    // Convert back to time strings
     const availableTimes = allStartTimes
       .filter((t) => !blockedStarts.has(t))
       .map((t) => {
@@ -121,6 +123,7 @@ router.get("/slots/:date", async (req, res) => {
         const minutes = t % 60;
         return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
       });
+
     res.json({
       success: true,
       bookedSlots: bookings.map((b) => b.time),
@@ -132,7 +135,7 @@ router.get("/slots/:date", async (req, res) => {
   }
 });
 
-// POST / (create booking) with validation
+// POST / (create booking) – store date as string, use string queries
 router.post(
   "/",
   [
@@ -143,12 +146,13 @@ router.post(
       .matches(/^\d{4}-\d{2}-\d{2}$/)
       .withMessage("Date must be in YYYY-MM-DD format")
       .custom((dateStr) => {
+        // Use local date for validation (no UTC conversion)
         const [year, month, day] = dateStr.split("-").map(Number);
-        const bookingDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
-        const todayUTC = new Date();
-        todayUTC.setUTCHours(0, 0, 0, 0);
-        if (bookingDate < todayUTC) throw new Error("Cannot book for a past date");
-        if (bookingDate.getTime() === todayUTC.getTime()) throw new Error("Same-day bookings are not allowed");
+        const bookingDateLocal = new Date(year, month - 1, day);
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+        if (bookingDateLocal < todayLocal) throw new Error("Cannot book for a past date");
+        if (bookingDateLocal.getTime() === todayLocal.getTime()) throw new Error("Same-day bookings are not allowed");
         return true;
       }),
     body("time").matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage("Time must be in HH:MM format (24-hour)"),
@@ -156,21 +160,16 @@ router.post(
   ],
   async (req, res) => {
     console.log("Received booking request:", req.body);
-    // Check validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
     try {
       const { name, email, phone, date: dateStr, time, service } = req.body;
-      const bookingDate = getUTCDateFromString(dateStr);
-      const startOfDay = new Date(bookingDate);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      const endOfDay = new Date(bookingDate);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-      // Double-check availability
+
+      // Check availability using string date (no timezone)
       const existingBooking = await Booking.findOne({
-        date: { $gte: startOfDay, $lte: endOfDay },
+        date: dateStr,
         time: time,
       });
       if (existingBooking) {
@@ -179,17 +178,20 @@ router.post(
           message: "This time slot is no longer available. Please choose another time.",
         });
       }
+
+      // Save the booking with date as string
       const booking = new Booking({
         name,
         email,
         phone,
-        date: bookingDate,
+        date: dateStr,
         time,
         service,
         bookingCode: generateBookingCode(),
       });
       await booking.save();
-      // Create Google Calendar events
+
+      // Create Google Calendar events (calendar.js expects string date)
       let clientEventId = null, adminEventId = null;
       try {
         clientEventId = await createCalendarEvent(booking, false);
@@ -201,6 +203,7 @@ router.post(
       } catch (calError) {
         console.error("⚠️ Calendar event creation failed (non‑blocking):", calError.message);
       }
+
       await sendBookingConfirmation(booking);
       res.status(201).json({
         success: true,
@@ -215,7 +218,7 @@ router.post(
   }
 );
 
-// POST /cancel – simple validation for bookingCode and email
+// POST /cancel – unchanged (works with string date)
 router.post(
   "/cancel",
   [

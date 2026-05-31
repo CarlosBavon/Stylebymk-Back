@@ -4,7 +4,7 @@ const { google } = require('googleapis');
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    'https://developers.google.com/oauthplayground' 
+    'https://developers.google.com/oauthplayground'
 );
 
 oauth2Client.setCredentials({
@@ -20,13 +20,19 @@ const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
  * @returns {Promise<string>} - The Google Calendar event ID.
  */
 const createCalendarEvent = async (booking, isAdmin = false) => {
-    // booking.date
-    const year = booking.date.getFullYear();
-    const month = String(booking.date.getMonth() + 1).padStart(2, '0');
-    const day = String(booking.date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
+    // booking.date is now a string "YYYY-MM-DD" (or could be a Date during migration)
+    let dateStr;
+    if (typeof booking.date === 'string') {
+        dateStr = booking.date;
+    } else {
+        // Fallback for old records: convert Date object to YYYY-MM-DD string
+        const year = booking.date.getFullYear();
+        const month = String(booking.date.getMonth() + 1).padStart(2, '0');
+        const day = String(booking.date.getDate()).padStart(2, '0');
+        dateStr = `${year}-${month}-${day}`;
+    }
 
-    // Combine date and time
+    // Combine date and time (booking.time is e.g., "14:30") with East Africa Timezone offset
     const startDateTime = new Date(`${dateStr}T${booking.time}:00+03:00`);
     if (isNaN(startDateTime.getTime())) {
         throw new Error(`Invalid date/time: ${dateStr} ${booking.time}`);
@@ -51,7 +57,7 @@ const createCalendarEvent = async (booking, isAdmin = false) => {
         attendees: isAdmin ? [] : [{ email: booking.email }], // client gets invite email
         reminders: { useDefault: true },
     };
- 
+
     const calendarId = 'primary';
     const response = await calendar.events.insert({
         calendarId,
