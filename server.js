@@ -2,6 +2,12 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const {
+  generalLimiter,
+  bookingLimiter,
+  enquiryLimiter,
+  // cancelLimiter is optional – we can apply it to the cancel route if desired
+} = require('./middleware/rateLimiter');
 
 const allowedOrigins = [
   "http://localhost:3000",
@@ -13,6 +19,9 @@ const enquiryRoutes = require("./routes/enquiries");
 const contactRoutes = require("./routes/contact");
 
 const app = express();
+
+// Trust proxy – required when behind a load balancer (e.g., Render)
+app.set('trust proxy', 1);
 
 // CORS middleware (handles preflight automatically)
 app.use(
@@ -28,15 +37,23 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+  })
 );
 
 app.use(express.json());
 
-// Health check endpoint (useful for Render / uptime monitoring)
+// Health check endpoint (unlimited, no rate limiting)
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Apply general rate limiter to all API routes (100 requests per 15 min per IP)
+app.use("/api", generalLimiter);
+
+// Apply stricter limiters to specific route groups
+app.use("/api/bookings", bookingLimiter);   // max 5 bookings per hour
+app.use("/api/enquiries", enquiryLimiter);  // max 10 messages per hour
+app.use("/api/contact", enquiryLimiter);    // max 10 messages per hour
 
 // MongoDB Connection
 mongoose
