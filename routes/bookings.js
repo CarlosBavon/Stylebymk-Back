@@ -142,7 +142,7 @@ router.post(
   [
     body("name").trim().isLength({ min: 2, max: 50 }).withMessage("Name must be between 2 and 50 characters").escape(),
     body("email").isEmail().withMessage("Valid email is required").normalizeEmail(),
-    body("phone").matches(/^0[0-9]{9}$/).withMessage("Phone number must be 10 digits starting with 0")
+    body("phone").matches(/^0[0-9]{9}$/).withMessage("Phone number must be 10 digits starting with 0"),
     body("date")
       .matches(/^\d{4}-\d{2}-\d{2}$/)
       .withMessage("Date must be in YYYY-MM-DD format")
