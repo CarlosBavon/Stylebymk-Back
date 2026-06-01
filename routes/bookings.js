@@ -88,19 +88,13 @@ router.get("/slots/:date", async (req, res) => {
       return hours * 60 + minutes;
     });
 
-    // Generate all possible start times (every 30 min from 8:00 to 15:30)
+    // Generate all possible start times (every 30 min from 8:00 to 17:00)
     const possibleStarts = [];
-    for (let hour = 8; hour <= 15; hour++) {
+    for (let hour = 8; hour <= 17; hour++) {
       for (let minute of [0, 30]) {
-        if (hour === 15 && minute === 30) {
-          possibleStarts.push(hour * 60 + minute);
-        } else if (hour < 15) {
-          possibleStarts.push(hour * 60 + minute);
-        }
+        if (hour === 17 && minute === 30) continue;
+        possibleStarts.push(hour * 60 + minute);
       }
-    }
-    if (!possibleStarts.includes(15 * 60 + 30)) {
-      possibleStarts.push(15 * 60 + 30);
     }
     const allStartTimes = [...new Set(possibleStarts)].sort((a, b) => a - b);
 

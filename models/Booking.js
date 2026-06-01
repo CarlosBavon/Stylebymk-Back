@@ -8,8 +8,8 @@ const bookingSchema = new mongoose.Schema({
   time: { type: String, required: true },
   service: { type: String, required: true },
   bookingCode: { type: String, unique: true },
-  clientEventId: { type: String },   // Google Calendar event ID for the client invitation
-  adminEventId: { type: String },    // Google Calendar event ID for the admin
+  clientEventId: { type: String },
+  adminEventId: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 
