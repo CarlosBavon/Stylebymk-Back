@@ -45,18 +45,17 @@ app.use(express.json());
 app.use(helmet());
 app.use(morgan('combined'));
 
+app.set('trust proxy', 1);
+
 // Health check endpoint (unlimited, no rate limiting)
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Apply general rate limiter to all API routes (100 requests per 15 min per IP)
 app.use("/api", generalLimiter);
-
-// Apply stricter limiters to specific route groups
-app.use("/api/bookings", bookingLimiter);   // max 5 bookings per hour
-app.use("/api/enquiries", enquiryLimiter);  // max 10 messages per hour
-app.use("/api/contact", enquiryLimiter);    // max 10 messages per hour
+app.use("/api/bookings", bookingLimiter);
+app.use("/api/enquiries", enquiryLimiter);
+app.use("/api/contact", enquiryLimiter);
 
 // MongoDB Connection
 mongoose
