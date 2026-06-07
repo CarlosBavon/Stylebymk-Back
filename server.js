@@ -15,15 +15,14 @@ const allowedOrigins = [
   "https://stylebymk.vercel.app",
 ];
 
+app.set('trust proxy', 1);
+
 const bookingRoutes = require("./routes/bookings");
 const enquiryRoutes = require("./routes/enquiries");
 const contactRoutes = require("./routes/contact");
 const ratingRoutes = require('./routes/ratings');
 
 const app = express();
-
-// Trust proxy – required when behind a load balancer (e.g., Render)
-app.set('trust proxy', 1);
 
 // CORS middleware (handles preflight automatically)
 app.use(
