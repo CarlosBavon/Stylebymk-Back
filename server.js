@@ -49,7 +49,7 @@ app.set('trust proxy', 1);
 
 // Health check endpoint (unlimited, no rate limiting)
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  res.status(200).send('ok');
 });
 
 app.use("/api", generalLimiter);
