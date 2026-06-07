@@ -15,14 +15,14 @@ const allowedOrigins = [
   "https://stylebymk.vercel.app",
 ];
 
-app.set('trust proxy', 1);
-
 const bookingRoutes = require("./routes/bookings");
 const enquiryRoutes = require("./routes/enquiries");
 const contactRoutes = require("./routes/contact");
 const ratingRoutes = require('./routes/ratings');
 
 const app = express();
+
+app.set('trust proxy', 1);
 
 // CORS middleware (handles preflight automatically)
 app.use(
