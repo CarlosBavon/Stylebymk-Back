@@ -63,5 +63,6 @@ module.exports = {
     generalLimiter,
     bookingLimiter,
     enquiryLimiter,
-    cancelLimiter
+    cancelLimiter,
+    ratingLimiter,
 };
