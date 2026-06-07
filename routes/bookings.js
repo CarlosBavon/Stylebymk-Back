@@ -65,7 +65,8 @@ const allowedServices = [
   "Tribal Braids",
   "Two-Strand Twists",
   "Waterfall Braids",
-  "Zigzag Cornrows"
+  "Zigzag Cornrows",
+  "OTHER..."
 ];
 
 // GET /slots/:date – use string date to fetch bookings (no timezone conversion)
