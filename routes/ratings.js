@@ -3,33 +3,16 @@ const router = express.Router();
 const Rating = require('../models/Rating');
 const { ratingLimiter } = require('../middleware/rateLimiter');
 
-// Submit a rating (POST)
-router.post('/', async (req, res) => {
-    try {
-        const { email, stars, comment } = req.body;
-        if (!email || !stars || stars < 1 || stars > 5) {
-            return res.status(400).json({ success: false, message: 'Invalid data' });
-        }
-        // Upsert: update if exists, else create
-        const rating = await Rating.findOneAndUpdate(
-            { email },
-            { stars, comment, createdAt: new Date() },
-            { upsert: true, new: true }
-        );
-        res.json({ success: true, message: 'Thank you for your rating!' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
+// Submit a rating (POST) – with rate limiter, no email required
 router.post('/', ratingLimiter, async (req, res) => {
+    console.log('Received rating data:', req.body);
     try {
         const { stars, comment } = req.body;
-        if (!stars || stars < 1 || stars > 5) {
-            return res.status(400).json({ success: false, message: 'Invalid stars (1-5)' });
+        // Validate stars (comment is optional)
+        if (typeof stars !== 'number' || stars < 1 || stars > 5) {
+            return res.status(400).json({ success: false, message: 'Stars must be a number between 1 and 5' });
         }
-        const rating = new Rating({ stars, comment });
+        const rating = new Rating({ stars, comment: comment || '' });
         await rating.save();
         res.json({ success: true, message: 'Thank you for your rating!' });
     } catch (error) {
