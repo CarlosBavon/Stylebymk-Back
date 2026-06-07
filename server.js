@@ -18,6 +18,7 @@ const allowedOrigins = [
 const bookingRoutes = require("./routes/bookings");
 const enquiryRoutes = require("./routes/enquiries");
 const contactRoutes = require("./routes/contact");
+const ratingRoutes = require('./routes/ratings');
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api", generalLimiter);
 app.use("/api/bookings", bookingLimiter);
 app.use("/api/enquiries", enquiryLimiter);
 app.use("/api/contact", enquiryLimiter);
+app.use('/api/ratings', ratingRoutes);
 
 // MongoDB Connection
 mongoose
