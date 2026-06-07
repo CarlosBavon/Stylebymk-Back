@@ -187,14 +187,12 @@ router.post(
       await booking.save();
 
       // Create Google Calendar events (calendar.js expects string date)
-      let clientEventId = null, adminEventId = null;
+      let calendarEventId = null;
       try {
-        clientEventId = await createCalendarEvent(booking, false);
-        adminEventId = await createCalendarEvent(booking, true);
-        booking.clientEventId = clientEventId;
-        booking.adminEventId = adminEventId;
+        calendarEventId = await createCalendarEvent(booking, false);
+        booking.calendarEventId = calendarEventId;   // store only one ID
         await booking.save();
-        console.log(`✅ Calendar events created for booking ${booking.bookingCode}`);
+        console.log(`✅ Calendar event created for booking ${booking.bookingCode}`);
       } catch (calError) {
         console.error("⚠️ Calendar event creation failed (non‑blocking):", calError.message);
       }
@@ -236,8 +234,7 @@ router.post(
       }
       // Delete calendar events if they exist
       try {
-        if (booking.clientEventId) await deleteCalendarEvent(booking.clientEventId);
-        if (booking.adminEventId) await deleteCalendarEvent(booking.adminEventId);
+        if (booking.calendarEventId) await deleteCalendarEvent(booking.calendarEventId);
         console.log(`🗑️ Calendar events deleted for booking ${booking.bookingCode}`);
       } catch (calError) {
         console.error("⚠️ Could not delete calendar events:", calError.message);

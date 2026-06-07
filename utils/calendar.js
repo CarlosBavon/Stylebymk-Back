@@ -39,13 +39,16 @@ const createCalendarEvent = async (booking, isAdmin = false) => {
     }
     const endDateTime = new Date(startDateTime.getTime() + 90 * 60000); // 1.5 hours
 
+    // Build cancellation URL (pre‑filled with booking code and email)
+    const cancelUrl = `${process.env.FRONTEND_URL}/cancel?code=${booking.bookingCode}&email=${encodeURIComponent(booking.email)}`;
+
     const event = {
         summary: isAdmin
             ? `Booking: ${booking.name} - ${booking.service}`
             : `Your hairstyle appointment - ${booking.service}`,
         description: isAdmin
-            ? `Client: ${booking.name}\nPhone: ${booking.phone}\nEmail: ${booking.email}\nBooking code: ${booking.bookingCode}`
-            : `Thank you for booking with StylesbyMK.\nBooking code: ${booking.bookingCode}\nTo cancel, please use the cancellation page.`,
+            ? `Client: ${booking.name}\nPhone: ${booking.phone}\nEmail: ${booking.email}\nBooking code: ${booking.bookingCode}\n\nAdmin cancellation link:\n${cancelUrl}`
+            : `Thank you for booking with StylesbyMK.\nBooking code: ${booking.bookingCode}\n\nTo cancel your appointment, click this link:\n${cancelUrl}`,
         start: {
             dateTime: startDateTime.toISOString(),
             timeZone: 'Africa/Nairobi',
