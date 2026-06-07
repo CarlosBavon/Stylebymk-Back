@@ -60,6 +60,9 @@ const sendBookingConfirmation = async (booking) => {
   const formattedDate = formatDate(booking.date);
   const customerHtml = `
     <div style="font-family: 'Poppins', sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #D4AF37; padding: 20px; border-radius: 10px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <img src="https://stylebymk.vercel.app/static/media/logo.68e78e6f3ad6643fbc53.png" alt="StylesbyMK Logo" style="max-width: 150px; height: auto;">
+    </div>
       <h1 style="color: #D4AF37;">Booking Confirmed ✅</h1>
       <p>Dear ${booking.name},</p>
       <p>Your <strong>${booking.service}</strong> appointment has been confirmed for <strong>${formattedDate}</strong> at <strong>${booking.time}</strong>.</p>
