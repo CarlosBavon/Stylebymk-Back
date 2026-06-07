@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Rating = require('../models/Rating');
+const { ratingLimiter } = require('../middleware/rateLimiter');
 
 // Submit a rating (POST)
 router.post('/', async (req, res) => {
@@ -15,6 +16,21 @@ router.post('/', async (req, res) => {
             { stars, comment, createdAt: new Date() },
             { upsert: true, new: true }
         );
+        res.json({ success: true, message: 'Thank you for your rating!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+router.post('/', ratingLimiter, async (req, res) => {
+    try {
+        const { stars, comment } = req.body;
+        if (!stars || stars < 1 || stars > 5) {
+            return res.status(400).json({ success: false, message: 'Invalid stars (1-5)' });
+        }
+        const rating = new Rating({ stars, comment });
+        await rating.save();
         res.json({ success: true, message: 'Thank you for your rating!' });
     } catch (error) {
         console.error(error);

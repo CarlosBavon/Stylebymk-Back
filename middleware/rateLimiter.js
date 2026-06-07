@@ -12,6 +12,17 @@ const generalLimiter = rateLimit({
     legacyHeaders: false,     // Disable the `X-RateLimit-*` headers
 });
 
+const ratingLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 1,
+    message: {
+        success: false,
+        message: 'You have already submitted a rating recently. Please try again later.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Stricter limiter for booking creation (POST /api/bookings)
 const bookingLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
