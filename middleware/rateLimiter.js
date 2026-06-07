@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 // General limiter – applies to all routes (default)
 const generalLimiter = rateLimit({
@@ -15,10 +15,8 @@ const generalLimiter = rateLimit({
 const ratingLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 1,
-    message: {
-        success: false,
-        message: 'You have already submitted a rating recently. Please try again later.'
-    },
+    keyGenerator: (req) => ipKeyGenerator(req.ip, 56),
+    message: { success: false, message: 'You have already submitted a rating. Please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,
 });
