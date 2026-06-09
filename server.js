@@ -13,6 +13,7 @@ const {
 const allowedOrigins = [
   "http://localhost:3000",
   "https://stylebymk.vercel.app",
+  "https://stylebymk-back.onrender.com",
 ];
 
 const bookingRoutes = require("./routes/bookings");
@@ -29,10 +30,13 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      const normalizedOrigin = origin.replace(/\/$/, '');
+
+      if (allowedOrigins.includes(normalizedOrigin)) {
         return callback(null, true);
       }
-      const msg = "CORS policy does not allow access from this origin.";
+      console.warn(`CORS blocked origin: ${origin}`);
+      const msg = `CORS policy does not allow access from ${origin}`;
       return callback(new Error(msg), false);
     },
     credentials: true,
@@ -41,11 +45,11 @@ app.use(
   })
 );
 
+app.options('*', cors());
+
 app.use(express.json());
 app.use(helmet());
 app.use(morgan('combined'));
-
-app.set('trust proxy', 1);
 
 // Health check endpoint (unlimited, no rate limiting)
 app.get("/health", (req, res) => {
