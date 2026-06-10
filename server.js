@@ -12,7 +12,9 @@ const {
 
 const allowedOrigins = [
   "http://localhost:3000",
+  "https://stylesbymk.xyz",
   "https://stylebymk.vercel.app",
+  "https://stylesbymk.vercel.app",
   "https://stylebymk-back.onrender.com",
 ];
 
