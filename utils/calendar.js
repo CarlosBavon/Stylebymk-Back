@@ -45,7 +45,7 @@ const createCalendarEvent = async (booking, isAdmin = false) => {
     const event = {
         summary: isAdmin
             ? `Booking: ${booking.name} - ${booking.service}`
-            : `Your hairstyle appointment - ${booking.service}`,
+            : `StylesbyMK - ${booking.name} (${booking.service})`,
         description: isAdmin
             ? `Client: ${booking.name}\nPhone: ${booking.phone}\nEmail: ${booking.email}\nBooking code: ${booking.bookingCode}\n\nAdmin cancellation link:\n${cancelUrl}`
             : `Thank you for booking with StylesbyMK.\nBooking code: ${booking.bookingCode}\n\nTo cancel your appointment, click this link:\n${cancelUrl}`,
