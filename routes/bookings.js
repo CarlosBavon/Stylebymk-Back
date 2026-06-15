@@ -19,10 +19,11 @@ const allowedServices = [
   "Locs (Dreadlocks)",
 ];
 
-// GET /slots/:date – unchanged (still shows 30‑min slots)
+// GET /slots/:date?service=...
 router.get("/slots/:date", async (req, res) => {
   try {
     const dateStr = req.params.date;
+    const service = req.query.service; // optional, e.g., "Locs (Dreadlocks)"
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return res.status(400).json({
         success: false,
@@ -30,54 +31,62 @@ router.get("/slots/:date", async (req, res) => {
       });
     }
 
-    const bookings = await Booking.find({ date: dateStr }, "time");
-    const bookedStarts = bookings.map((b) => {
-      const [hours, minutes] = b.time.split(":").map(Number);
-      return hours * 60 + minutes;
-    });
+    // All existing bookings for the day
+    const existingBookings = await Booking.find({ date: dateStr });
 
-    // Generate all possible start times (every 30 min from 8:00 to 17:00)
-    const possibleStarts = [];
+    // Duration for the selected service (default 90 min if not provided)
+    const duration = service ? getDuration(service) : 90;
+
+    // Generate all possible start times (8:00 to 17:00, every 30 min, excluding 17:30)
+    const allStartTimes = [];
     for (let hour = 8; hour <= 17; hour++) {
       for (let minute of [0, 30]) {
         if (hour === 17 && minute === 30) continue;
-        possibleStarts.push(hour * 60 + minute);
+        allStartTimes.push(hour * 60 + minute);
       }
     }
-    const allStartTimes = [...new Set(possibleStarts)].sort((a, b) => a - b);
 
-    // Block slots that overlap with existing bookings (duration 90 min)
+    const CLOSE_MINUTES = 17 * 60; // 5:00 PM
     const blockedStarts = new Set();
-    for (let booked of bookedStarts) {
-      const blockStart = booked;
-      const blockEnd = booked + 90; // exclusive
+
+    // 1. Block times that would exceed closing time for this service
+    for (let t of allStartTimes) {
+      if (t + duration > CLOSE_MINUTES) {
+        blockedStarts.add(t);
+      }
+    }
+
+    // 2. Block times that overlap with any existing booking (using their actual durations)
+    for (let existing of existingBookings) {
+      const existingDuration = getDuration(existing.service);
+      const [exHour, exMin] = existing.time.split(":").map(Number);
+      const exStart = exHour * 60 + exMin;
+      const exEnd = exStart + existingDuration;
+
       for (let t of allStartTimes) {
-        if (t >= blockStart && t < blockEnd) {
+        const newEnd = t + duration;
+        if (t < exEnd && newEnd > exStart) {
           blockedStarts.add(t);
         }
       }
     }
 
     const availableTimes = allStartTimes
-      .filter((t) => !blockedStarts.has(t))
-      .map((t) => {
+      .filter(t => !blockedStarts.has(t))
+      .map(t => {
         const hours = Math.floor(t / 60);
         const minutes = t % 60;
         return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
       });
 
-    res.json({
-      success: true,
-      bookedSlots: bookings.map((b) => b.time),
-      availableTimes,
-    });
+    res.json({ success: true, availableTimes });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// POST / (create booking) – with variable duration validation
+// POST / (create booking) – unchanged (already uses variable duration)
 router.post(
   "/",
   [
@@ -108,16 +117,12 @@ router.post(
     try {
       const { name, email, phone, date: dateStr, time, service } = req.body;
 
-      // 1. Get duration for the chosen service
       const duration = getDuration(service);
-
-      // 2. Convert start time to minutes
       const [startHour, startMin] = time.split(":").map(Number);
       const startMinutes = startHour * 60 + startMin;
       const endMinutes = startMinutes + duration;
 
-      // 3. Check if appointment fits within working hours (8:00 AM – 5:00 PM)
-      const CLOSE_MINUTES = 17 * 60; // 5:00 PM = 1020 minutes
+      const CLOSE_MINUTES = 17 * 60;
       if (endMinutes > CLOSE_MINUTES) {
         return res.status(400).json({
           success: false,
@@ -125,7 +130,6 @@ router.post(
         });
       }
 
-      // 4. Check for overlapping bookings using their actual durations
       const existingBookings = await Booking.find({ date: dateStr });
       for (let existing of existingBookings) {
         const existingDuration = getDuration(existing.service);
@@ -141,19 +145,12 @@ router.post(
         }
       }
 
-      // 5. Save the booking
       const booking = new Booking({
-        name,
-        email,
-        phone,
-        date: dateStr,
-        time,
-        service,
+        name, email, phone, date: dateStr, time, service,
         bookingCode: generateBookingCode(),
       });
       await booking.save();
 
-      // 6. Create Google Calendar event (duration will be passed via calendar.js)
       let calendarEventId = null;
       try {
         calendarEventId = await createCalendarEvent(booking, false);
