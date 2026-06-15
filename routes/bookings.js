@@ -5,26 +5,21 @@ const Booking = require("../models/Booking");
 const { sendBookingConfirmation } = require("../utils/sendEmail");
 const crypto = require("crypto");
 const { createCalendarEvent, deleteCalendarEvent } = require("../utils/calendar");
+const { getDuration } = require("../utils/serviceDurations");
 
 function generateBookingCode() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
 }
 
-// Helper: Convert "YYYY-MM-DD" to a local date string for validation (no timezone)
-function getLocalDateFromString(dateStr) {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day); // local timezone
-}
-
-// List of allowed services (same as frontend)
+// List of allowed services
 const allowedServices = [
   "Cornrows",
   "Twists",
   "Barrel Twists",
-  "Locs (Dreadlocks)"
+  "Locs (Dreadlocks)",
 ];
 
-// GET /slots/:date – use string date to fetch bookings (no timezone conversion)
+// GET /slots/:date – unchanged (still shows 30‑min slots)
 router.get("/slots/:date", async (req, res) => {
   try {
     const dateStr = req.params.date;
@@ -35,10 +30,7 @@ router.get("/slots/:date", async (req, res) => {
       });
     }
 
-    // Find all bookings for the exact date string
     const bookings = await Booking.find({ date: dateStr }, "time");
-
-    // Convert booked start times to minutes from midnight
     const bookedStarts = bookings.map((b) => {
       const [hours, minutes] = b.time.split(":").map(Number);
       return hours * 60 + minutes;
@@ -66,7 +58,6 @@ router.get("/slots/:date", async (req, res) => {
       }
     }
 
-    // Convert back to time strings
     const availableTimes = allStartTimes
       .filter((t) => !blockedStarts.has(t))
       .map((t) => {
@@ -86,7 +77,7 @@ router.get("/slots/:date", async (req, res) => {
   }
 });
 
-// POST / (create booking) – store date as string, use string queries
+// POST / (create booking) – with variable duration validation
 router.post(
   "/",
   [
@@ -97,7 +88,6 @@ router.post(
       .matches(/^\d{4}-\d{2}-\d{2}$/)
       .withMessage("Date must be in YYYY-MM-DD format")
       .custom((dateStr) => {
-        // Use local date for validation (no UTC conversion)
         const [year, month, day] = dateStr.split("-").map(Number);
         const bookingDateLocal = new Date(year, month - 1, day);
         const todayLocal = new Date();
@@ -118,19 +108,40 @@ router.post(
     try {
       const { name, email, phone, date: dateStr, time, service } = req.body;
 
-      // Check availability using string date (no timezone)
-      const existingBooking = await Booking.findOne({
-        date: dateStr,
-        time: time,
-      });
-      if (existingBooking) {
-        return res.status(409).json({
+      // 1. Get duration for the chosen service
+      const duration = getDuration(service);
+
+      // 2. Convert start time to minutes
+      const [startHour, startMin] = time.split(":").map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = startMinutes + duration;
+
+      // 3. Check if appointment fits within working hours (8:00 AM – 5:00 PM)
+      const CLOSE_MINUTES = 17 * 60; // 5:00 PM = 1020 minutes
+      if (endMinutes > CLOSE_MINUTES) {
+        return res.status(400).json({
           success: false,
-          message: "This time slot is no longer available. Please choose another time.",
+          message: `This service lasts ${duration / 60} hour(s) and would finish after 5:00 PM. Please choose an earlier time.`
         });
       }
 
-      // Save the booking with date as string
+      // 4. Check for overlapping bookings using their actual durations
+      const existingBookings = await Booking.find({ date: dateStr });
+      for (let existing of existingBookings) {
+        const existingDuration = getDuration(existing.service);
+        const [exHour, exMin] = existing.time.split(":").map(Number);
+        const exStart = exHour * 60 + exMin;
+        const exEnd = exStart + existingDuration;
+
+        if (startMinutes < exEnd && endMinutes > exStart) {
+          return res.status(409).json({
+            success: false,
+            message: "This time overlaps with an existing booking. Please choose another time."
+          });
+        }
+      }
+
+      // 5. Save the booking
       const booking = new Booking({
         name,
         email,
@@ -142,11 +153,11 @@ router.post(
       });
       await booking.save();
 
-      // Create Google Calendar events (calendar.js expects string date)
+      // 6. Create Google Calendar event (duration will be passed via calendar.js)
       let calendarEventId = null;
       try {
         calendarEventId = await createCalendarEvent(booking, false);
-        booking.calendarEventId = calendarEventId;   // store only one ID
+        booking.calendarEventId = calendarEventId;
         await booking.save();
         console.log(`✅ Calendar event created for booking ${booking.bookingCode}`);
       } catch (calError) {
@@ -167,7 +178,7 @@ router.post(
   }
 );
 
-// POST /cancel – unchanged (works with string date)
+// POST /cancel – unchanged
 router.post(
   "/cancel",
   [
@@ -188,12 +199,11 @@ router.post(
           message: "Booking not found. Check code and email.",
         });
       }
-      // Delete calendar events if they exist
       try {
         if (booking.calendarEventId) await deleteCalendarEvent(booking.calendarEventId);
-        console.log(`🗑️ Calendar events deleted for booking ${booking.bookingCode}`);
+        console.log(`🗑️ Calendar event deleted for booking ${booking.bookingCode}`);
       } catch (calError) {
-        console.error("⚠️ Could not delete calendar events:", calError.message);
+        console.error("⚠️ Could not delete calendar event:", calError.message);
       }
       await Booking.deleteOne({ _id: booking._id });
       res.json({ success: true, message: "Booking cancelled successfully." });
