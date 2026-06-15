@@ -14,9 +14,9 @@ function generateBookingCode() {
 // List of allowed services
 const allowedServices = [
   "Cornrows",
-  "Twists",
+  "Natural twists",
   "Barrel Twists",
-  "Locs (Dreadlocks)",
+  "Artificial locs!",
 ];
 
 // GET /slots/:date?service=...
