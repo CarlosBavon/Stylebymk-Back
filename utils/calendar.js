@@ -1,5 +1,4 @@
 const { google } = require('googleapis');
-const { getDuration } = require('./serviceDurations');
 
 // OAuth2 client setup 
 const oauth2Client = new google.auth.OAuth2(
@@ -21,29 +20,26 @@ const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
  * @returns {Promise<string>} - The Google Calendar event ID.
  */
 const createCalendarEvent = async (booking, isAdmin = false) => {
-    // booking.date is now a string "YYYY-MM-DD"
+    // booking.date is now a string "YYYY-MM-DD" (or could be a Date during migration)
     let dateStr;
     if (typeof booking.date === 'string') {
         dateStr = booking.date;
     } else {
-        // Fallback for old records
+        // Fallback for old records: convert Date object to YYYY-MM-DD string
         const year = booking.date.getFullYear();
         const month = String(booking.date.getMonth() + 1).padStart(2, '0');
         const day = String(booking.date.getDate()).padStart(2, '0');
         dateStr = `${year}-${month}-${day}`;
     }
 
-    // Combine date and time with East Africa Timezone offset
+    // Combine date and time (booking.time is e.g., "14:30") with East Africa Timezone offset
     const startDateTime = new Date(`${dateStr}T${booking.time}:00+03:00`);
     if (isNaN(startDateTime.getTime())) {
         throw new Error(`Invalid date/time: ${dateStr} ${booking.time}`);
     }
+    const endDateTime = new Date(startDateTime.getTime() + 90 * 60000); // 1.5 hours
 
-    // ✅ Use variable duration
-    const duration = getDuration(booking.service);
-    const endDateTime = new Date(startDateTime.getTime() + duration * 60000);
-
-    // Build cancellation URL
+    // Build cancellation URL (pre‑filled with booking code and email)
     const cancelUrl = `${process.env.FRONTEND_URL}/cancel?code=${booking.bookingCode}&email=${encodeURIComponent(booking.email)}`;
 
     const event = {
@@ -61,7 +57,7 @@ const createCalendarEvent = async (booking, isAdmin = false) => {
             dateTime: endDateTime.toISOString(),
             timeZone: 'Africa/Nairobi',
         },
-        attendees: isAdmin ? [] : [{ email: booking.email }],
+        attendees: isAdmin ? [] : [{ email: booking.email }], // client gets invite email
         reminders: { useDefault: true },
     };
 
@@ -69,7 +65,7 @@ const createCalendarEvent = async (booking, isAdmin = false) => {
     const response = await calendar.events.insert({
         calendarId,
         resource: event,
-        sendUpdates: 'all',
+        sendUpdates: 'all', // sends email invite to attendees
     });
     return response.data.id;
 };
