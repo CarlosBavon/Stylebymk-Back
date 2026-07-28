@@ -8,8 +8,8 @@ const generalLimiter = rateLimit({
         success: false,
         message: 'Too many requests from this IP, please try again after 15 minutes.'
     },
-    standardHeaders: true,    // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false,     // Disable the `X-RateLimit-*` headers
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
 const ratingLimiter = rateLimit({
@@ -30,6 +30,18 @@ const bookingLimiter = rateLimit({
             success: false,
             message: 'Too many booking attempts. Please wait an hour before trying again.'
         });
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// NEW: Slots limiter – more generous for browsing available times
+const slotsLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 60,                  // 60 requests per hour – enough for browsing dates
+    message: {
+        success: false,
+        message: 'Too many date changes. Please wait a moment before selecting another date.'
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -63,4 +75,5 @@ module.exports = {
     enquiryLimiter,
     cancelLimiter,
     ratingLimiter,
+    slotsLimiter, // ✅ export the new limiter
 };

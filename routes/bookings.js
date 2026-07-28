@@ -6,6 +6,7 @@ const { sendBookingConfirmation } = require("../utils/sendEmail");
 const crypto = require("crypto");
 const { createCalendarEvent, deleteCalendarEvent } = require("../utils/calendar");
 const { getDuration } = require("../utils/serviceDurations");
+const { slotsLimiter } = require('../middleware/rateLimiter');
 
 function generateBookingCode() {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -20,7 +21,7 @@ const allowedServices = [
 ];
 
 // GET /slots/:date?service=...
-router.get("/slots/:date", async (req, res) => {
+router.get("/slots/:date", slotsLimiter, async (req, res) => {
   try {
     const dateStr = req.params.date;
     const service = req.query.service; // optional, e.g., "Locs (Dreadlocks)"
